@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 const routes = ["overview", "journeys", "journey", "entry", "applications", "tasks", "documents",
-  "travel", "layovers", "travel-day", "arrival", "budget", "safety", "ai", "family", "notifications", "settings", "sources"];
+  "travel", "layovers", "travel-day", "arrival", "budget", "safety", "ai", "family", "notifications", "settings", "sources", "optimize"];
 
-test.beforeEach(async ({ context }) => {
+test.beforeEach(async ({ context, baseURL }) => {
   await context.route("**/*", route => {
     const url = new URL(route.request().url());
-    return ["127.0.0.1", "localhost"].includes(url.hostname) ? route.continue() : route.abort();
+    return ["127.0.0.1", "localhost", new URL(baseURL!).hostname].includes(url.hostname) ? route.continue() : route.abort();
   });
 });
 

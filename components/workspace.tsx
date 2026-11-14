@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -47,9 +48,14 @@ import {
   SettingsView,
   AIView,
 } from "./views/life";
+const OptimizeView = dynamic(
+  () => import("./views/optimize").then((module) => module.OptimizeView),
+  { loading: () => <p className="panel-padding">Loading journey comparison…</p> },
+);
 export const navigation = [
   { label: "Overview", path: "overview", icon: House },
   { label: "Journeys", path: "journeys", icon: Map },
+  { label: "Optimize", path: "optimize", icon: Sparkles },
   { label: "Visa & entry", path: "entry", icon: Globe2 },
   { label: "Applications", path: "applications", icon: ClipboardList },
   { label: "Documents", path: "documents", icon: FolderClosed },
@@ -92,6 +98,7 @@ export function Workspace({ section }: { section: string }) {
     overview: <Overview onCreate={() => setCreate(true)} />,
     journeys: <Journeys onCreate={() => setCreate(true)} />,
     journey: <JourneyWorkspace />,
+    optimize: <OptimizeView />,
     entry: <EntryView />,
     applications: <ApplicationsView />,
     tasks: <TasksView />,
@@ -139,7 +146,7 @@ export function Workspace({ section }: { section: string }) {
         <div className="workspace-switch">
           <span className="workspace-avatar">M</span>
           <div>
-            <strong>Travel workspace</strong>
+            <strong>Government services</strong>
             <small>Cross-border preparation</small>
           </div>
           <ChevronDown size={13} />
@@ -308,7 +315,7 @@ export function Workspace({ section }: { section: string }) {
         <main
           className="app-content"
           id="workspace-main"
-          key={`${pathname}-${journey?.id ?? "empty"}`}
+          key={`${pathname}-${journey?.id ?? "empty"}-${state.activeTravelerId}`}
         >
           {!ready ? (
             <div className="skeleton-page">
@@ -388,8 +395,8 @@ export function Workspace({ section }: { section: string }) {
           )}
         </main>
         <footer className="app-footer">
-          <span>Meridian · Travel readiness & cross-border services</span>
-          <span>Local workspace</span>
+          <span>Meridian · Independent government-service preparation platform</span>
+          <span>Not a government authority · Local demonstration workspace</span>
         </footer>
       </div>
       {create && <JourneyForm open onOpenChange={setCreate} />}

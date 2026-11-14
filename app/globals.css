@@ -6436,3 +6436,62 @@ td small {
     transition: none !important;
   }
 }
+/* Local preparation progress, never an official identity badge. */
+.verification-ring { display: inline-flex; flex: none; vertical-align: middle; color: var(--accent, #4975e9); }
+.verification-ring svg { overflow: visible; }
+.verification-ring-track, .verification-ring-arc { fill: none; stroke-width: 2; }
+.verification-ring-track { stroke: var(--border, #e4e4e7); }
+.verification-ring-arc { stroke: currentColor; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset 280ms ease; }
+.verification-ring.is-complete { color: var(--green, #168466); }
+@media (prefers-reduced-motion: reduce) { .verification-ring-arc { transition: none; } }
+
+/* Connected government case: summary first, procedure detail on demand. */
+.government-case-panel { margin-bottom: 20px; }
+.government-case-overview { display: flex; align-items: center; gap: 18px; padding: 20px; }
+.government-case-overview > div { min-width: 0; }
+.government-case-overview p, .government-case-step small, .government-case-next small { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.government-case-next { display: grid; gap: 5px; margin: 0 20px 16px; padding: 12px 14px; border-left: 2px solid var(--blue, #4975e9); background: var(--surface-alt, var(--bg)); }
+.government-case-next span { font-weight: 500; }
+.government-case-compact { display: flex; align-items: flex-start; gap: 20px; padding: 0 20px 16px; flex-wrap: wrap; }
+.government-case-details { border-top: 1px solid var(--border); padding: 14px 20px; }
+.government-case-details summary { font-weight: 550; cursor: pointer; padding: 2px 0; }
+.government-case-details[open] summary { margin-bottom: 16px; }
+.government-case-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.government-case-step { display: grid; align-content: start; gap: 6px; padding: 14px; border: 1px solid var(--border); border-radius: 6px; overflow-wrap: anywhere; }
+.government-case-step > div { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.government-case-step strong, .government-case-step span { display: block; }
+.government-case-step span { color: var(--muted); font-size: 12px; }
+.government-case-step a, .government-case-costs a { color: var(--blue, #4975e9); font-size: 12px; display: inline-flex; gap: 4px; align-items: center; }
+.government-case-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px 0; }
+.government-case-form label { display: grid; gap: 6px; font-size: 12px; }
+.government-case-form input { min-width: 0; width: 100%; }
+.government-case-record { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.government-case-record small { display: block; color: var(--muted); font-size: 12px; }
+.government-case-timeline { display: grid; gap: 12px; padding-left: 20px; }
+.government-case-timeline small { display: block; color: var(--muted); font-size: 12px; }
+.government-case-costs { padding: 14px 20px; border-top: 1px solid var(--border); }
+.government-case-costs p, .government-case-costs li { font-size: 12px; line-height: 1.7; }
+.government-case-footer { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 20px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.government-case-footer span { font-size: 11px; color: var(--muted); }
+.service-cost-totals > p { margin: 12px 20px; font-variant-numeric: tabular-nums; }
+.optimize-workspace { display: grid; gap: 18px; }
+.optimize-workspace .page-heading { margin-bottom: 0; }
+.optimize-workspace .panel > :not(.panel-heading) { margin-left: 20px; margin-right: 20px; }
+.optimize-workspace .panel > :last-child { margin-bottom: 20px; }
+.optimize-workspace .panel > :first-child:not(.panel-heading) { margin-top: 20px; }
+.optimize-workspace .task-row { width: 100%; text-align: left; }
+.optimize-workspace .task-copy { min-width: 0; overflow-wrap: anywhere; }
+.optimize-workspace .task-row > .muted { flex: none; font-variant-numeric: tabular-nums; }
+.optimize-workspace details { padding: 12px 0; }
+.optimize-workspace summary { cursor: pointer; font-weight: 550; }
+.optimization-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.optimization-option { padding: 16px; border: 1px solid var(--border); border-radius: 6px; text-align: left; min-width: 0; }
+.optimization-option[aria-pressed="true"] { border-color: var(--blue); }
+.government-case-panel :focus-visible, .optimize-workspace :focus-visible { outline: 2px solid var(--blue, #4975e9); outline-offset: 3px; }
+@media (max-width: 640px) {
+  .government-case-steps, .government-case-form, .optimization-options { grid-template-columns: minmax(0, 1fr); }
+  .government-case-overview { align-items: flex-start; padding: 16px; }
+  .government-case-details, .government-case-costs, .government-case-footer { padding-left: 16px; padding-right: 16px; }
+  .government-case-record { align-items: flex-start; flex-wrap: wrap; }
+  .optimize-workspace .task-row { display: flex; flex-wrap: wrap; gap: 10px; }
+}

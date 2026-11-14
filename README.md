@@ -11,7 +11,7 @@
 
 <h2>Know what comes next.</h2>
 
-<p><em>Travel readiness and cross-border journey management, organized around you.</em></p>
+<p><em>Government-service preparation and cross-border case management, organized around you.</em></p>
 
 <p>PROJECT MERIDIAN · Independent travel preparation</p>
 
@@ -23,13 +23,13 @@
 
 ## About
 
-Meridian is a public-service-oriented travel readiness and cross-border journey management platform. It brings traveler profiles, entry requirements, application preparation, supporting documents and travel plans into one workspace.
+Meridian is an independent GovTech government-service preparation and cross-border case management platform. It brings traveler profiles, entry requirements, application preparation, supporting documents and travel plans into one browser-local workspace.
 
 Crossing a border involves more than an itinerary. What a traveler needs to prepare depends on their nationality, residence, purpose, dates and transit route. Official guidance is spread across different authorities, while evidence records, application references and deadlines are often kept separately.
 
 Meridian connects those preparation steps without presenting them as permission to travel. Contextual official references help travelers investigate requirements; local tasks, document records and checklists help them organize what comes next. The current application is browser-local, with bundled geography and no connected government systems.
 
-## The eighteen workspaces
+## Connected workspaces
 
 The application has nine primary navigation areas and nine supporting views, all sharing the active journey and traveler context. A new browser workspace starts with sample records; saved local data is restored on subsequent visits. Sign-in opens that device's workspace, not a remotely authenticated account.
 
@@ -40,6 +40,8 @@ The application has nine primary navigation areas and nine supporting views, all
 | **Journey workspace** | Edits purpose, dates, origin, destination, ordered transit stops and travelers. Departure-date changes recalculate relative task deadlines. |
 | **Visa & entry** | Builds conditional preparation records around passport nationality, residence, destination, purpose and travel dates. Unsupported contexts retain an explicit coverage gap. |
 | **Applications** | Tracks five stages: Requirements, Documents, Application, Submission and Status. Records manual review, external submission dates, references and user-entered status. |
+| **Government case preparation** | Extends the existing application with a derived dependency graph, evidence readiness, appointments, deadlines, linked costs, recorded activity and official-source context. Unknown conditions are not completed by reviewing them. |
+| **Optimize** | Deterministic multi-objective itinerary comparison with explicit cost uncertainty, preparation gaps, configurable preferences and Pareto alternatives. Manual quotes and illustrative routes are not live availability. Applying a scenario changes the canonical journey and route map. |
 | **Documents** | Manages document metadata, categories, owners, expiry dates, preparation notes and prepared/reviewed states, with links to application requirements. No document files are uploaded. |
 | **Tasks** | Organizes journey-specific preparation with relative deadlines, priorities, traveler ownership, dependencies, completion and list/timeline views. |
 | **Travel** | Keeps recorded itinerary legs alongside an interactive geographical route map, with airport markers, great-circle segments, selection, pan and zoom. Geography is bundled locally, not fetched from tile servers. |
@@ -67,6 +69,16 @@ A global **Find anything** dialog searches navigation, active journeys and curre
 
 Data remains in browser storage for the current origin; it is not encrypted or synchronized across devices. Store only non-sensitive metadata. Passport and residence-permit identifiers are masked before persistence, but other profile information remains browser-readable. Moving from localhost to the hosted site does not transfer the existing workspace automatically.
 
+Use fictional demonstration profiles only. Profile completeness and personal review are
+separate from identity verification, which is unavailable. Circular indicators measure
+recorded local work, not government approval. Optional additions to the existing schema
+preserve earlier workspace records; invalid saved data is preserved rather than overwritten.
+Settings provides metadata export and confirmed clearing of Meridian's local data.
+
+Government fees are unknown unless recorded with appropriate source conditions.
+Expenses distinguish known, estimated and unknown amounts and retain currencies without
+exchange-rate conversion. A user-entered source link is not an independently verified fee.
+
 Official references require internet access. Bundled map data and local preparation interactions do not require online providers once the application is loaded; this is not a service-worker-cached offline website. An optional Windows package serves the static application locally and includes a separate, simplified direct-file fallback.
 
 ## Repository layout
@@ -84,6 +96,9 @@ lib/geography.ts             Offline airport registry and great-circle geometry
 lib/assistant.ts             Local intent routing over the active workspace
 public/assets/               Bundled geographical polygons and dataset attribution
 scripts/                     Static server, optional USB packager and HTML fallback
+lib/government.ts             Derived government cases and procedural dependencies
+lib/optimization.ts           Deterministic multi-objective journey comparison
+components/verification-progress-ring.tsx  Accessible local-completion indicators
 tests/                       Domain tests and browser workflow verification
 vercel.json                  Vercel build and installation settings
 ```
@@ -120,11 +135,32 @@ Browser tests require Microsoft Edge, selected by `playwright.config.ts`. Their 
 
 For an optional Windows x64 offline distribution, run `pnpm run package:usb` after building on Windows x64. Generated USB packages, portable executables, dependencies, build output and agent artifacts stay outside Git. Retain the included Node runtime license and [geographical dataset attribution](public/assets/GEOGRAPHY_LICENSE.txt) when distributing those assets.
 
+For the same complete application in a standalone localhost presentation, build and
+commit the validated source, then run `node scripts/package-local.cjs`. It creates
+`../MERIDIAN_LOCAL_DEMO` outside this repository and refuses to overwrite an existing
+package. The package includes its Windows x64 Node runtime, loopback server, static
+assets, licenses and source commit identifier. It needs a modern browser but no
+separately installed Node, pnpm, Python or administrator account. School executable
+and localhost policies must still be checked on the presentation laptop. Official
+links require internet; bundled preparation workflows do not. Vercel is an online
+fallback and must not be described as localhost.
+
 The hosted application is available at **[meridian-lake-delta.vercel.app](https://meridian-lake-delta.vercel.app)**. Vercel uses `vercel.json`, the pinned pnpm version and the existing static-export configuration; no server functions are needed. The production release was deployed through Vercel CLI. Automatic GitHub deployments still require granting Vercel access to this private repository and connecting it under **Project Settings → Git**.
 
 ## Verification status
 
-Latest deployment verification: **2026-11-14**, local Node.js **25.9.0**, pnpm **11.5.2**. The local runtime differed from the declared Node 24 requirement; the Vercel production build also completed successfully. These results describe the deployment checks, not a new audit on every README update.
+Final release validation on **2026-11-14**: TypeScript, ESLint, production build,
+**103 domain tests passed** (3 optional packaging checks skipped), and
+**36 production-export browser tests passed**, including government case records,
+Optimize persistence and destination synchronization, documents, journey editing,
+maps, local sign-in, mobile layout and appearance. Local Node was **25.9.0**;
+the deployment uses the declared **24.x** engine. No authorized government or
+hosted identity integration is connected.
+
+Previous deployment verification (before the government orchestration upgrade):
+**2026-11-14**, local Node.js **25.9.0**, pnpm **11.5.2**. The local runtime differed
+from the declared Node 24 requirement. The historical results below do not establish
+validation of the current upgrade; consult its release report and rerun the commands.
 
 - `pnpm install --frozen-lockfile` — **pass**, from a clean dependency installation without upgrading the lockfile.
 - `pnpm run test` — **59 passed, 1 optional USB-archive check skipped**.

@@ -1,4 +1,5 @@
 import type { RequirementContext } from "./requirements";
+import type { OptimizationCandidate, SavedComparison } from "./optimization";
 
 export type JourneyMode = "Trip" | "Move" | "Transit" | "Family";
 export interface Traveler {
@@ -17,6 +18,8 @@ export interface Traveler {
   existingVisaStatus?: string;
   residencePermitMasked?: string;
   residencePermitExpiry?: string;
+  detailsReviewedAt?: string;
+  consentLocalMetadata?: boolean;
 }
 export interface Journey {
   id: string;
@@ -88,6 +91,8 @@ export interface Application {
   submissionDate?: string;
   reference?: string;
   completedSteps: string[];
+  appointments?: { id: string; title: string; scheduledAt: string; location: string; completed: boolean }[];
+  deadlines?: { id: string; title: string; date: string; completed: boolean }[];
   contextSnapshot?: RequirementContext;
   legacyStatus?: string;
   ruleContext?: {
@@ -172,6 +177,9 @@ export interface BudgetItem {
   planned: number;
   actual: number;
   currency: string;
+  applicationId?: string;
+  certainty?: "known" | "estimated" | "unknown";
+  sourceUrl?: string;
 }
 export interface Advisory {
   id: string;
@@ -189,6 +197,8 @@ export interface Notification {
   journeyId?: string;
 }
 export interface DemoState {
+  optimizationCandidates?: OptimizationCandidate[];
+  savedComparisons?: SavedComparison[];
   visaSchemaVersion?: 1;
   applications?: Application[];
   evidenceLinks?: EvidenceLink[];

@@ -35,6 +35,8 @@ import {
   isDemoState,
 } from "@/lib/planning";
 import type { BudgetItem } from "@/lib/types";
+import { profileReadiness, maskedPassportSuffix } from "@/lib/profile-readiness";
+import { summarizeServiceCosts } from "@/lib/service-costs";
 import {
   Badge,
   DemoNotice,
@@ -47,6 +49,7 @@ import {
 } from "../common";
 import { Button } from "../ui/button";
 import { Modal } from "../ui/dialog";
+import { VerificationProgressRing } from "../verification-progress-ring";
 function useJourney() {
   const store = useDemo();
   return {
@@ -62,26 +65,43 @@ export function BudgetView() {
   const [allowanceOpen, setAllowanceOpen] = useState(false);
   const [edit, setEdit] = useState<BudgetItem | null>(null);
   const items = state.expenses.filter((e) => e.journeyId === j.id);
+  const usdItems = items.filter((item) => (item.currency || "USD") === "USD");
   const allowance = j.budgetAllowance ?? 5000;
-  const totals = budgetTotals(items, allowance);
-  const categoryTotals = items.reduce<Record<string, number>>((groups, item) => {
-    groups[item.category] = (groups[item.category] ?? 0) + item.planned;
+  const totals = budgetTotals(usdItems, allowance);
+  const categoryTotals = usdItems.reduce<Record<string, number>>((groups, item) => {
+    if (item.certainty !== "unknown") groups[item.category] = (groups[item.category] ?? 0) + item.planned;
     return groups;
   }, {});
   const plannedByCategory = Object.entries(categoryTotals);
+  const applications = (state.applications ?? []).filter((application) => application.journeyId === j.id);
+  const currencyTotals = Object.entries(items.reduce<Record<string, { planned: number; actual: number }>>((groups, item) => {
+    const currency = item.currency || "USD";
+    groups[currency] ??= { planned: 0, actual: 0 };
+    if (item.certainty !== "unknown") groups[currency].planned += item.planned;
+    groups[currency].actual += item.actual;
+    return groups;
+  }, {}));
+  const unknownCount = items.filter((item) => item.certainty === "unknown").length;
+  const costCertainty = summarizeServiceCosts(items);
   function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const certainty = String(f.get("certainty") || "known") as BudgetItem["certainty"];
+    const planned = certainty === "unknown" ? 0 : Number(f.get("planned"));
+    const actual = certainty === "unknown" ? 0 : Number(f.get("actual"));
     const item: BudgetItem = {
       id: edit?.id ?? `expense-${Date.now()}`,
       journeyId: j.id,
       title: String(f.get("title")).trim(),
       category: String(f.get("category")),
-      planned: Number(f.get("planned")),
-      actual: Number(f.get("actual")),
-      currency: "USD",
+      planned,
+      actual,
+      currency: String(f.get("currency") || "USD"),
+      applicationId: String(f.get("applicationId") || "") || undefined,
+      certainty,
+      sourceUrl: String(f.get("sourceUrl") || "").trim() || undefined,
     };
-    if (!item.title || item.planned < 0 || item.actual < 0) return;
+    if (!item.title || !Number.isFinite(item.planned) || !Number.isFinite(item.actual) || item.planned < 0 || item.actual < 0) return;
     update((s) => ({
       ...s,
       expenses: edit
@@ -95,7 +115,7 @@ export function BudgetView() {
     <>
       <PageHeading
         title="Expenses"
-        description={`${j.destination} · Planned and recorded costs in USD`}
+        description={`${j.destination} · Costs remain in their recorded currency`}
       >
         <Button
           variant="default"
@@ -131,6 +151,18 @@ export function BudgetView() {
           <p>Allowance less actual spending</p>
         </Panel>
       </div>
+      <Panel className="spaced service-cost-totals" title="Cost certainty" description="User-recorded values, not an official fee quotation.">
+        {Object.entries(costCertainty).map(([currency, amounts]) => (
+          <p key={currency}><strong>{currency}</strong> · Known {money(amounts.known, currency)} · Estimated {money(amounts.estimated, currency)} · {amounts.unknown} unknown amount(s)</p>
+        ))}
+        {!items.length && <p>No costs recorded. Government charges remain unknown until confirmed.</p>}
+      </Panel>
+      {(currencyTotals.length > 1 || currencyTotals.some(([currency]) => currency !== "USD") || unknownCount > 0) && (
+        <Panel className="spaced" title="Recorded currency totals" description="Currencies are kept separate; no exchange rates or conversions are applied.">
+          {currencyTotals.map(([currency, total]) => <p key={currency}><strong>{currency}</strong> · Planned {money(total.planned, currency)} · Actual {money(total.actual, currency)}</p>)}
+          {unknownCount > 0 && <p>{unknownCount} expense{unknownCount === 1 ? "" : "s"} have an unknown amount and are not included in totals.</p>}
+        </Panel>
+      )}
        {items.length > 0 && <div className="bottom-grid">
         <Panel
           title="Where your budget goes"
@@ -175,17 +207,19 @@ export function BudgetView() {
           </div>
         </Panel>
       </div>}
-      <Panel
-        className="spaced"
-        title="The details, without the guesswork"
-        action={<Badge>USD · No live currency conversion</Badge>}
-      >
+        <Panel
+          className="spaced"
+          title="The details, without the guesswork"
+          action={<Badge>Recorded currency · No live conversion</Badge>}
+        >
         <div className="table-scroll">
           <table>
             <thead>
               <tr>
                 <th>Expense</th>
                 <th>Category</th>
+                <th>Application</th>
+                <th>Certainty</th>
                 <th>Planned</th>
                 <th>Actual</th>
                 <th>Difference</th>
@@ -199,12 +233,14 @@ export function BudgetView() {
                     <strong>{e.title}</strong>
                   </td>
                   <td>{e.category}</td>
-                  <td className="mono">{money(e.planned)}</td>
-                  <td className="mono">{money(e.actual)}</td>
+                  <td>{applications.find((application) => application.id === e.applicationId)?.visaCategory ?? "Journey"}</td>
+                  <td>{e.certainty ?? "known"}</td>
+                  <td className="mono">{e.certainty === "unknown" ? "Unknown" : money(e.planned, e.currency || "USD")}</td>
+                  <td className="mono">{e.certainty === "unknown" ? "Unknown" : money(e.actual, e.currency || "USD")}</td>
                   <td>
-                    <Badge tone={e.actual <= e.planned ? "green" : "amber"}>
-                      {money(e.planned - e.actual)}
-                    </Badge>
+                    {e.certainty === "unknown" ? "Unknown" : <Badge tone={e.actual <= e.planned ? "green" : "amber"}>
+                      {money(e.planned - e.actual, e.currency || "USD")}
+                    </Badge>}
                   </td>
                   <td>
                      <Button
@@ -254,7 +290,7 @@ export function BudgetView() {
         open={open}
         onOpenChange={setOpen}
         title={edit ? "Edit expense" : "Make room in your plan"}
-        description="Record planned and actual costs in USD."
+         description="Record estimates or amounts in their original currency. No conversion is applied."
       >
         <form onSubmit={save}>
           <div className="form-grid">
@@ -271,15 +307,14 @@ export function BudgetView() {
               Category
               <select
                 name="category"
-                defaultValue={edit?.category ?? "Transport"}
-              >
+                 defaultValue={edit?.category ?? "Government fees"}
+               >
                 {[
-                  "Flights",
-                  "Housing",
-                  "Administration",
-                  "Health",
-                  "Transport",
-                  "Food",
+                  "Government fees",
+                  "Healthcare",
+                  "Document certification",
+                  "Travel",
+                  "Accommodation",
                   "Other",
                 ].map((c) => (
                   <option key={c}>{c}</option>
@@ -288,8 +323,29 @@ export function BudgetView() {
             </label>
             <label>
               Currency
-              <input value="USD" readOnly />
+              <select name="currency" defaultValue={edit?.currency ?? "USD"}>
+                {["USD", "GBP", "EUR", "CAD", "INR", "JPY", "AUD"].map((currency) => <option key={currency}>{currency}</option>)}
+              </select>
             </label>
+            <label>
+              Application
+              <select name="applicationId" defaultValue={edit?.applicationId ?? ""}>
+                <option value="">Journey-level expense</option>
+                {applications.map((application) => {
+                  const traveler = state.travelers.find((person) => person.id === application.travelerId);
+                  return <option key={application.id} value={application.id}>{traveler?.name ?? "Traveler"} · {application.visaCategory}</option>;
+                })}
+              </select>
+            </label>
+            <label>
+              Amount certainty
+              <select name="certainty" defaultValue={edit?.certainty ?? "known"}>
+                <option value="known">Known</option>
+                <option value="estimated">Estimated</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </label>
+            <label className="full">Source URL (optional)<input name="sourceUrl" type="url" defaultValue={edit?.sourceUrl} placeholder="https://official.example/fees" /></label>
             <label>
               Planned amount
               <input
@@ -297,7 +353,6 @@ export function BudgetView() {
                 min="0"
                 step="0.01"
                 name="planned"
-                required
                 defaultValue={edit?.planned ?? 100}
               />
             </label>
@@ -308,7 +363,6 @@ export function BudgetView() {
                 min="0"
                 step="0.01"
                 name="actual"
-                required
                 defaultValue={edit?.actual ?? 0}
               />
             </label>
@@ -475,6 +529,7 @@ export function SafetyView() {
 export function FamilyView() {
   const { state, update, toast, j } = useJourney();
   const [add, setAdd] = useState(false);
+  const [editingTraveler, setEditingTraveler] = useState<string | null>(null);
   const people = state.travelers.filter((t) => j.travelers.includes(t.id));
   return (
     <>
@@ -510,14 +565,11 @@ export function FamilyView() {
             (x) => x.journeyId === j.id && x.travelerId === t.id,
           );
           return (
-            <button
-              key={t.id}
-              className={`traveler-card ${state.activeTravelerId === t.id ? "selected" : ""}`}
-              onClick={() => {
+            <div key={t.id} className={`traveler-card ${state.activeTravelerId === t.id ? "selected" : ""}`}>
+              <button className="traveler-card-select" onClick={() => {
                 update((s) => ({ ...s, activeTravelerId: t.id }));
                 toast(`Traveler context switched to ${t.name}.`);
-              }}
-            >
+              }}>
               <div className="between">
                 <span className={`avatar large ${t.color}`}>{t.initials}</span>
                 {state.activeTravelerId === t.id && (
@@ -529,6 +581,8 @@ export function FamilyView() {
               </div>
               <h2>{t.name}</h2>
               <p>{t.role}</p>
+              </button>
+              <VerificationProgressRing completed={profileReadiness(t).completed} total={profileReadiness(t).total} size={32} status={t.detailsReviewedAt ? "user-reviewed" : "needs-information"} label="Profile completeness" />
               <div className="context-details">
                 <span>
                   Nationality<strong>{t.nationality}</strong>
@@ -557,7 +611,14 @@ export function FamilyView() {
               </div>
               <Progress value={readiness(tasks)} />
               <small>Entry eligibility not verified</small>
-            </button>
+              <p className="muted small">
+                {profileReadiness(t).expiry === "expired" ? "Passport expiry date has passed — check and update." :
+                  profileReadiness(t).expiry === "due-soon" ? "Passport expires within 180 days — review renewal timing." :
+                  profileReadiness(t).expiry === "missing" ? "Add a passport expiry date to see a reminder." : "Passport expiry is more than 180 days away."}
+                {" "}Details {t.detailsReviewedAt ? `reviewed ${new Date(t.detailsReviewedAt).toLocaleDateString()}` : "not yet reviewed"}.
+              </p>
+              <Button size="sm" onClick={() => setEditingTraveler(t.id)}><Pencil size={13} /> Edit profile</Button>
+            </div>
           );
         })}
       </div>
@@ -581,7 +642,7 @@ export function FamilyView() {
         open={add}
         onOpenChange={setAdd}
         title="Someone else coming along?"
-        description="Add personal information for an additional traveler."
+        description="Use fictional demo details only. Never enter scans or full identity numbers."
       >
         <form
           onSubmit={(e) => {
@@ -641,6 +702,66 @@ export function FamilyView() {
             </Button>
           </div>
         </form>
+      </Modal>
+      <Modal
+        open={Boolean(editingTraveler)}
+        onOpenChange={(open) => { if (!open) setEditingTraveler(null); }}
+        title="Traveler profile details"
+        description="Local planning metadata only. Do not add document scans or full passport numbers. This does not verify identity or eligibility."
+      >
+        {(() => {
+          const traveler = people.find((person) => person.id === editingTraveler);
+          if (!traveler) return null;
+          return <form onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+             if (form.get("consentLocalMetadata") !== "on") {
+               toast("Consent is required to save local profile metadata. Use Privacy & data to withdraw consent and clear saved data.");
+               return;
+             }
+             const masked = maskedPassportSuffix(String(form.get("passportMasked") || ""));
+             if (masked === null) {
+               toast("Enter only the last one to four letters or digits; never a full passport identifier.");
+              return;
+            }
+            update((current) => ({
+              ...current,
+              travelers: current.travelers.map((person) => person.id === traveler.id ? {
+                ...person,
+                name: String(form.get("name")).trim(),
+                initials: String(form.get("name")).trim().split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase(),
+                role: String(form.get("role")).trim(),
+                nationality: String(form.get("nationality")).trim(),
+                residence: String(form.get("residence")).trim(),
+                passportIssuingCountry: String(form.get("passportIssuingCountry")).trim(),
+                passportType: String(form.get("passportType")).trim(),
+                passportMasked: masked,
+                passportExpiry: String(form.get("passportExpiry") || ""),
+                existingVisaStatus: String(form.get("existingVisaStatus") || "").trim(),
+                detailsReviewedAt: new Date().toISOString(),
+                consentLocalMetadata: form.get("consentLocalMetadata") === "on",
+              } : person),
+            }));
+            setEditingTraveler(null);
+            toast("Profile details saved and marked as reviewed. Official verification is unavailable.");
+          }}>
+            <div className="form-grid">
+              <label className="full">Name<input name="name" required defaultValue={traveler.name} /></label>
+              <label>Relationship / role<input name="role" required defaultValue={traveler.role} placeholder="Self, partner, child…" /></label>
+              <label>Nationality<input name="nationality" required defaultValue={traveler.nationality} /></label>
+              <label>Country of residence<input name="residence" required defaultValue={traveler.residence} /></label>
+              <label>Passport issuing country<input name="passportIssuingCountry" defaultValue={traveler.passportIssuingCountry} /></label>
+              <label>Passport type<input name="passportType" defaultValue={traveler.passportType} placeholder="Ordinary (demo)" /></label>
+              <label>Passport expiry<input name="passportExpiry" type="date" defaultValue={traveler.passportExpiry} /></label>
+              <label>Existing visa status (optional)<input name="existingVisaStatus" defaultValue={traveler.existingVisaStatus} placeholder="Not reviewed" /></label>
+               <label className="full">Masked passport suffix only<input name="passportMasked" maxLength={10} defaultValue={traveler.passportMasked} placeholder="•••• 1234" /><small>Optional. Last four letters or digits only; never enter a full number.</small></label>
+               <label className="full"><input type="checkbox" name="consentLocalMetadata" required defaultChecked={traveler.consentLocalMetadata} /> I consent to keeping these fictional profile metadata in this browser.</label>
+               <small className="full">Withdraw consent and remove stored data in Settings → Privacy &amp; data.</small>
+            </div>
+            <div className="privacy-explainer"><LockKeyhole size={18} /><p>Profile completion means details are present and reviewed by you. Identity checks, document scans and official verification are not available.</p></div>
+            <div className="dialog-footer"><Button onClick={() => setEditingTraveler(null)}>Cancel</Button><Button type="submit" variant="default">Save &amp; mark reviewed</Button></div>
+          </form>;
+        })()}
       </Modal>
     </>
   );
@@ -754,6 +875,7 @@ export function SettingsView() {
   const { state, update, toast } = useDemo();
   const [tab, setTab] = useState("Profile");
   const [reset, setReset] = useState(false);
+  const [clearLocalData, setClearLocalData] = useState(false);
   return (
     <>
       <PageHeading
@@ -957,6 +1079,13 @@ export function SettingsView() {
                     Reset workspace
                   </Button>
                 </div>
+                <div className="preference-row">
+                  <div>
+                    <h3>Delete all Meridian data from this browser</h3>
+                    <p>Removes the workspace, migration backups and saved workspace history. This cannot be undone.</p>
+                  </div>
+                  <Button variant="destructive" onClick={() => setClearLocalData(true)}>Delete local data</Button>
+                </div>
                 {!!state.workspaceHistory?.length && <section className="saved-workspaces">
                   <h3>Saved workspaces</h3>
                   <p className="muted small">Earlier workspaces are retained separately when you onboard another traveler.</p>
@@ -1015,6 +1144,22 @@ export function SettingsView() {
           >
             Reset workspace
           </Button>
+        </div>
+      </Modal>
+      <Modal
+        open={clearLocalData}
+        onOpenChange={setClearLocalData}
+        title="Delete all local Meridian data?"
+        description="This permanently removes your Meridian workspace, recovery/migration copies and saved workspace history from this browser. Reset workspace is different: it replaces edits with demo data."
+      >
+        <div className="dialog-footer">
+          <Button onClick={() => setClearLocalData(false)}>Cancel</Button>
+          <Button variant="destructive" onClick={() => {
+            for (const key of Object.keys(localStorage)) {
+              if (key.toLowerCase().startsWith("meridian")) localStorage.removeItem(key);
+            }
+            window.location.reload();
+          }}>Delete everything</Button>
         </div>
       </Modal>
     </>

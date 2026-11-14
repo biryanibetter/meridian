@@ -16,6 +16,8 @@ import { DocumentEditor } from "../document-editor";
 import { Badge, PageHeading, Panel } from "../common";
 import { Button } from "../ui/button";
 import { Modal } from "../ui/dialog";
+import { GovernmentCasePanel } from "../government-case";
+import { VerificationProgressRing } from "../verification-progress-ring";
 
 const stages: { key: ApplicationStage; label: string }[] = [
   { key: "requirements", label: "Requirements" },
@@ -136,6 +138,7 @@ export function ApplicationsView() {
           <MoreHorizontal size={16} />
         </Button>
       </PageHeading>
+      <GovernmentCasePanel application={app} />
       <nav className="visa-stepper" aria-label="Application progress">
         {stages.map((stage, index) => (
           <button
@@ -158,6 +161,13 @@ export function ApplicationsView() {
           Requirements assessed
         </span>
         <span>
+          <VerificationProgressRing
+            completed={metrics.documentsPrepared}
+            total={metrics.documentsTotal}
+            size={32}
+            status="official-confirmation-required"
+            label="Application documents prepared"
+          />{" "}
           <strong>
             {metrics.documentsPrepared}/{metrics.documentsTotal}
           </strong>{" "}

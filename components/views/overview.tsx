@@ -6,7 +6,6 @@ import {
   ArrowUpRight,
   CalendarDays,
   Check,
-  CheckCircle2,
   ChevronRight,
   Clock3,
   FileText,
@@ -35,6 +34,7 @@ import {
 } from "../common";
 import { Button } from "../ui/button";
 import { JourneyForm } from "../journey-form";
+import { VerificationProgressRing } from "../verification-progress-ring";
 export function Overview({ onCreate }: { onCreate: () => void }) {
   const { state } = useDemo();
   const j = activeJourney(state);
@@ -93,7 +93,7 @@ export function Overview({ onCreate }: { onCreate: () => void }) {
         </div>
         <div>
           <span className="stat-icon green">
-            <CheckCircle2 size={17} />
+            <VerificationProgressRing completed={tasks.filter((task) => task.done).length} total={tasks.length} size={32} label="Journey tasks" status="official-confirmation-required" />
           </span>
           <div>
             <small>Journey readiness</small>
@@ -134,7 +134,7 @@ export function Overview({ onCreate }: { onCreate: () => void }) {
         </div>
       </div>
       <Link href="/app/documents" className="document-readiness-summary">
-        <FileText size={15} />
+        <VerificationProgressRing completed={journeyDocuments.filter((document) => document.prepared).length} total={journeyDocuments.length} size={32} label="Document records prepared" status="prepared" />
         <strong>{journeyDocuments.filter((document) => document.prepared).length} of {journeyDocuments.length} document records prepared</strong>
         <span>Local preparation status</span>
         <ArrowRight size={14} />

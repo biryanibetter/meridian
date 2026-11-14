@@ -36,6 +36,13 @@ const server = http.createServer((req, res) => {
     }
     if (fs.existsSync(file) && fs.statSync(file).isDirectory())
       file = path.join(file, "index.html");
+    // Next's Windows export nests RSC segments; clients request dotted names.
+    if (!fs.existsSync(file) && path.basename(file).startsWith("__next.")) {
+      const parts = path.basename(file).split(".");
+      if (parts.length > 3 && parts.at(-1) === "txt") {
+        file = path.join(path.dirname(file), parts.slice(0, 2).join("."), ...parts.slice(2, -2), `${parts.at(-2)}.txt`);
+      }
+    }
     if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
       res.writeHead(404, { "Content-Type": "text/plain" }).end("Not found");
       return;

@@ -150,7 +150,21 @@ export function isDemoState(value: unknown): value is DemoState {
           ].includes(String(app.status)) &&
           Array.isArray(app.completedSteps) &&
           app.completedSteps.every((step) => typeof step === "string") &&
-          (app.ruleContext === undefined || isRecord(app.ruleContext)),
+          (app.ruleContext === undefined || isRecord(app.ruleContext)) &&
+          (app.appointments === undefined ||
+            (Array.isArray(app.appointments) && app.appointments.every(
+              (item) => isRecord(item) &&
+                ["id", "title", "scheduledAt", "location"].every((key) => typeof item[key] === "string") &&
+                Number.isFinite(Date.parse(String(item.scheduledAt))) &&
+                typeof item.completed === "boolean",
+            ))) &&
+          (app.deadlines === undefined ||
+            (Array.isArray(app.deadlines) && app.deadlines.every(
+              (item) => isRecord(item) &&
+                ["id", "title", "date"].every((key) => typeof item[key] === "string") &&
+                isDate(String(item.date)) &&
+                typeof item.completed === "boolean",
+            ))),
       ))
   )
     return false;
@@ -196,6 +210,14 @@ export function isDemoState(value: unknown): value is DemoState {
     return false;
   // The structural checks above make typed record inspection safe.
   const s = value as unknown as DemoState;
+  if (!s.travelers.every((traveler) =>
+    ["passportIssuingCountry", "passportMasked", "passportType", "passportExpiry",
+      "dateOfBirth", "existingVisaStatus", "residencePermitMasked",
+      "residencePermitExpiry", "detailsReviewedAt"].every((key) => {
+        const field = (traveler as unknown as Record<string, unknown>)[key];
+        return field === undefined || typeof field === "string";
+      }) && (traveler.consentLocalMetadata === undefined || typeof traveler.consentLocalMetadata === "boolean"),
+  )) return false;
   if (
     s.travelDayDone !== undefined &&
     (!Array.isArray(s.travelDayDone) ||
@@ -237,7 +259,10 @@ export function isDemoState(value: unknown): value is DemoState {
         Number.isFinite(e.planned) &&
         e.planned >= 0 &&
         Number.isFinite(e.actual) &&
-        e.actual >= 0,
+        e.actual >= 0 &&
+        (e.certainty === undefined || ["known", "estimated", "unknown"].includes(e.certainty)) &&
+        (e.applicationId === undefined || typeof e.applicationId === "string") &&
+        (e.sourceUrl === undefined || typeof e.sourceUrl === "string"),
     ) &&
     s.notifications.every((n) => typeof n.read === "boolean")
   );

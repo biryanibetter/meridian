@@ -50,5 +50,5 @@ Desktop.ini
 .idea/
 .vscode/
 *.swp
-
-.vercel
+*.tmp
+*.trace.zip

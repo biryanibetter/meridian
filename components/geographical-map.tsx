@@ -5,10 +5,9 @@ import { greatCircle } from "@/lib/geography";
 import { useDemo } from "@/lib/store";
 import type { Journey } from "@/lib/types";
 import { deriveJourneyRoute } from "@/lib/journey-route";
+import { loadMapFeatures, type GeographicFeature } from "@/lib/map-data";
 
-type Feature = {
-  geometry: { type: string; coordinates: number[][][] | number[][][][] };
-};
+type Feature = GeographicFeature;
 const wrapDelta = (lon: number) => ((((lon + 180) % 360) + 360) % 360) - 180;
 const project = ([lon, lat]: number[], centerLon = 0) => [
   (centerLon + wrapDelta(lon - centerLon) + 180) * 3,
@@ -71,13 +70,9 @@ export function GeographicalMap({
   }, []);
   useEffect(() => {
     let active = true;
-    fetch("/assets/countries.geojson")
-      .then((r) => {
-        if (!r.ok) throw new Error("Map asset missing");
-        return r.json();
-      })
-      .then((d) => {
-        if (active) setLand(d.features);
+    loadMapFeatures()
+      .then((features) => {
+        if (active) setLand(features);
       })
       .catch(() => {
         if (active) setFailed(true);

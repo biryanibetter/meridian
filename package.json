@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "test:e2e": "playwright test tests/e2e/production.spec.ts tests/e2e/meridian.spec.ts tests/e2e/repair.spec.ts tests/e2e/workflow-repair.spec.ts tests/e2e/visa-workflow.spec.ts tests/e2e/visa-documents.spec.ts --grep-invert \"standalone fallback\"",
+    "test:e2e": "playwright test tests/e2e/production.spec.ts tests/e2e/meridian.spec.ts tests/e2e/repair.spec.ts tests/e2e/workflow-repair.spec.ts tests/e2e/visa-workflow.spec.ts tests/e2e/visa-documents.spec.ts tests/e2e/government.spec.ts --grep-invert \"standalone fallback\"",
     "test:e2e:legacy": "playwright test",
     "format": "prettier --write app components lib tests"
   },

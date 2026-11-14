@@ -39,6 +39,8 @@ export function personalWorkspaceBase(
     evidenceLinks: [],
     applicationEvents: [],
     requirementAssessments: {},
+    optimizationCandidates: [],
+    savedComparisons: [],
     applicationRecords: {},
     reviewedRules: [],
     arrivalDone: [],

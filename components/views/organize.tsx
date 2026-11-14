@@ -29,6 +29,7 @@ import { Modal } from "../ui/dialog";
 import { invalidateTaskDescendants } from "@/lib/task-dependencies";
 import { DocumentEditor } from "../document-editor";
 import { applicationRequirements, documentStatus } from "@/lib/visa-workflow";
+import { VerificationProgressRing } from "../verification-progress-ring";
 const documentCategories = [
   "Passport",
   "Visa",
@@ -511,6 +512,7 @@ export function DocumentsView() {
                   return req?.title ?? link.requirementId;
                 });
                 const status = documentStatus(doc);
+                const expired = !!doc.expires && doc.expires < new Date().toISOString().slice(0, 10);
                 return (
                   <tr key={doc.id}>
                     <td>
@@ -539,6 +541,13 @@ export function DocumentsView() {
                         : "—"}
                     </td>
                     <td>
+                      <VerificationProgressRing
+                        completed={expired ? 0 : Number(!!doc.prepared) + Number(!!doc.prepared && !!doc.reviewed)}
+                        total={2}
+                        size={32}
+                        status={expired ? "needs-information" : doc.prepared ? "prepared" : "not-checked"}
+                        label={`${doc.name} local preparation and personal review`}
+                      />{" "}
                       <Badge
                         tone={
                           status === "Ready"

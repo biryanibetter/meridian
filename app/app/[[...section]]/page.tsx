@@ -3,7 +3,7 @@ export const dynamicParams = false;
 export function generateStaticParams() {
   return [
     { section: [] },
-    ...["overview", "journeys", "journey", "entry", "applications", "tasks", "documents",
+    ...["overview", "journeys", "journey", "optimize", "entry", "applications", "tasks", "documents",
       "travel", "layovers", "travel-day", "arrival", "budget", "safety",
       "family", "notifications", "settings", "sources", "ai"].map((section) => ({ section: [section] })),
   ];
