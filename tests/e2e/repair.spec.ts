@@ -1,11 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
 
-test.beforeEach(async ({ context }) => {
+test.beforeEach(async ({ context, baseURL }) => {
   // Disable all external networking while leaving the USB's loopback server usable.
   await context.route("**/*", route => {
     const host = new URL(route.request().url()).hostname;
-    return ["localhost", "127.0.0.1"].includes(host) ? route.continue() : route.abort();
+    return ["localhost", "127.0.0.1", new URL(baseURL!).hostname].includes(host) ? route.continue() : route.abort();
   });
 });
 

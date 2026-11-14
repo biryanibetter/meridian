@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 
-test.beforeEach(async ({ context }) => {
+test.beforeEach(async ({ context, baseURL }) => {
   await context.route("**/*", (route) =>
-    ["127.0.0.1", "localhost"].includes(new URL(route.request().url()).hostname)
+    ["127.0.0.1", "localhost", new URL(baseURL!).hostname].includes(new URL(route.request().url()).hostname)
       ? route.continue()
       : route.abort(),
   );
