@@ -22,13 +22,20 @@ export function budgetTotals(
 }
 export function isDemoState(value: unknown): value is DemoState {
   if (!isRecord(value) || value.version !== 1) return false;
-  if (value.workspaceHistory !== undefined && (
-    !Array.isArray(value.workspaceHistory) ||
-    !value.workspaceHistory.every(entry =>
-      isRecord(entry) && typeof entry.name === "string" && typeof entry.savedAt === "string" &&
-      isRecord(entry.state) && entry.state.workspaceHistory === undefined && isDemoState(entry.state)
-    )
-  )) return false;
+  if (
+    value.workspaceHistory !== undefined &&
+    (!Array.isArray(value.workspaceHistory) ||
+      !value.workspaceHistory.every(
+        (entry) =>
+          isRecord(entry) &&
+          typeof entry.name === "string" &&
+          typeof entry.savedAt === "string" &&
+          isRecord(entry.state) &&
+          entry.state.workspaceHistory === undefined &&
+          isDemoState(entry.state),
+      ))
+  )
+    return false;
   const fields: Record<string, string[]> = {
     journeys: [
       "id",
@@ -113,6 +120,80 @@ export function isDemoState(value: unknown): value is DemoState {
     !Object.values(value.preferences).every((v) => typeof v === "boolean")
   )
     return false;
+  if (
+    value.applications !== undefined &&
+    (!Array.isArray(value.applications) ||
+      !value.applications.every(
+        (app) =>
+          isRecord(app) &&
+          [
+            "id",
+            "journeyId",
+            "travelerId",
+            "destination",
+            "visaCategory",
+            "notes",
+          ].every((key) => typeof app[key] === "string") &&
+          [
+            "requirements",
+            "documents",
+            "application",
+            "submission",
+            "status",
+          ].includes(String(app.stage)) &&
+          [
+            "Not started",
+            "Preparing",
+            "Submitted",
+            "Awaiting decision",
+            "Decision received",
+          ].includes(String(app.status)) &&
+          Array.isArray(app.completedSteps) &&
+          app.completedSteps.every((step) => typeof step === "string") &&
+          (app.ruleContext === undefined || isRecord(app.ruleContext)),
+      ))
+  )
+    return false;
+  if (
+    value.evidenceLinks !== undefined &&
+    (!Array.isArray(value.evidenceLinks) ||
+      !value.evidenceLinks.every(
+        (link) =>
+          isRecord(link) &&
+          [
+            "id",
+            "applicationId",
+            "requirementId",
+            "documentId",
+            "confirmedAt",
+          ].every((key) => typeof link[key] === "string") &&
+          link.verificationState === "unverified",
+      ))
+  )
+    return false;
+  if (
+    value.applicationEvents !== undefined &&
+    (!Array.isArray(value.applicationEvents) ||
+      !value.applicationEvents.every(
+        (event) =>
+          isRecord(event) &&
+          ["id", "applicationId", "type", "detail", "createdAt"].every(
+            (key) => typeof event[key] === "string",
+          ),
+      ))
+  )
+    return false;
+  if (
+    value.requirementAssessments !== undefined &&
+    (!isRecord(value.requirementAssessments) ||
+      !Object.values(value.requirementAssessments).every(
+        (record) =>
+          isRecord(record) &&
+          typeof record.assessedAt === "string" &&
+          typeof record.contextKey === "string",
+      ))
+  )
+    return false;
   // The structural checks above make typed record inspection safe.
   const s = value as unknown as DemoState;
   if (
@@ -124,7 +205,8 @@ export function isDemoState(value: unknown): value is DemoState {
   const active = s.journeys.find((j) => j.id === s.activeJourneyId);
   const activeContextValid = active
     ? !active.archived && active.travelers.includes(s.activeTravelerId)
-    : s.activeJourneyId === "" && s.journeys.every((journey) => journey.archived);
+    : s.activeJourneyId === "" &&
+      s.journeys.every((journey) => journey.archived);
   return (
     activeContextValid &&
     s.journeys.every(
@@ -132,7 +214,9 @@ export function isDemoState(value: unknown): value is DemoState {
         ["Trip", "Move", "Transit", "Family"].includes(j.mode) &&
         typeof j.archived === "boolean" &&
         isDate(j.departure) &&
-        (j.longTerm === true ? j.returnDate === "" : isDate(j.returnDate) && j.returnDate >= j.departure) &&
+        (j.longTerm === true
+          ? j.returnDate === ""
+          : isDate(j.returnDate) && j.returnDate >= j.departure) &&
         Array.isArray(j.travelers) &&
         j.travelers.length > 0 &&
         j.travelers.every((id) => s.travelers.some((t) => t.id === id)),
@@ -145,7 +229,9 @@ export function isDemoState(value: unknown): value is DemoState {
         (t.dependency === undefined || typeof t.dependency === "string") &&
         (t.note === undefined || typeof t.note === "string"),
     ) &&
-    s.documents.every((d) => (d.expires === "" || isDate(d.expires)) && isDate(d.added)) &&
+    s.documents.every(
+      (d) => (d.expires === "" || isDate(d.expires)) && isDate(d.added),
+    ) &&
     s.expenses.every(
       (e) =>
         Number.isFinite(e.planned) &&

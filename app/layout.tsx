@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DemoProvider } from "@/lib/store";
 import "./globals.css";
 import "./refinements.css";
+import "./visa-workflow.css";
 export const metadata: Metadata = {
   title: "Meridian — Know what comes next.",
   description:

@@ -1,3 +1,5 @@
+import type { RequirementContext } from "./requirements";
+
 export type JourneyMode = "Trip" | "Move" | "Transit" | "Family";
 export interface Traveler {
   id: string;
@@ -62,6 +64,59 @@ export interface Document {
   preparationNote?: string;
   prepared?: boolean;
   reviewed?: boolean;
+  issueDate?: string;
+  preparationStatus?:
+    "Missing" | "To prepare" | "Added" | "Needs review" | "Ready";
+}
+export type ApplicationStage =
+  "requirements" | "documents" | "application" | "submission" | "status";
+export interface Application {
+  id: string;
+  journeyId: string;
+  travelerId: string;
+  destination: string;
+  visaCategory: string;
+  stage: ApplicationStage;
+  status:
+    | "Not started"
+    | "Preparing"
+    | "Submitted"
+    | "Awaiting decision"
+    | "Decision received";
+  officialUrl?: string;
+  notes: string;
+  submissionDate?: string;
+  reference?: string;
+  completedSteps: string[];
+  contextSnapshot?: RequirementContext;
+  legacyStatus?: string;
+  ruleContext?: {
+    courseLevel?: string;
+    courseCah3Code?: string;
+    tbResidenceDurationMonths?: number;
+    tbListedCountryRecentResidence?: boolean;
+    financialSponsorshipWithin12Months?: boolean;
+    applicationDate?: string;
+    englishPathway?: string;
+    financialEvidenceException?: string;
+    atasRequired?: boolean;
+  };
+}
+export interface EvidenceLink {
+  id: string;
+  applicationId: string;
+  requirementId: string;
+  documentId: string;
+  confirmedAt: string;
+  reviewedAt?: string;
+  verificationState: "unverified";
+}
+export interface ApplicationEvent {
+  id: string;
+  applicationId: string;
+  type: string;
+  detail: string;
+  createdAt: string;
 }
 export interface Source {
   id: string;
@@ -134,6 +189,14 @@ export interface Notification {
   journeyId?: string;
 }
 export interface DemoState {
+  visaSchemaVersion?: 1;
+  applications?: Application[];
+  evidenceLinks?: EvidenceLink[];
+  applicationEvents?: ApplicationEvent[];
+  requirementAssessments?: Record<
+    string,
+    { assessedAt: string; contextKey: string }
+  >;
   workspaceHistory?: WorkspaceSnapshot[];
   version: 1;
   journeys: Journey[];

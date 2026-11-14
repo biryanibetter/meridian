@@ -10,6 +10,7 @@ import { createSeed } from "./demo";
 import { isDemoState } from "./planning";
 import type { DemoState } from "./types";
 import { normalizeJourneyState } from "./journey-state";
+import { normalizeVisaState } from "./visa-workflow";
 type Store = {
   state: DemoState;
   update: (fn: (s: DemoState) => DemoState) => void;
@@ -19,9 +20,12 @@ type Store = {
 };
 const Context = createContext<Store | null>(null);
 export function DemoProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<DemoState>(createSeed);
+  const [state, setState] = useState<DemoState>(() =>
+    normalizeVisaState(createSeed()),
+  );
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState("");
+  const [storageCompatible, setStorageCompatible] = useState(true);
   useEffect(() => {
     let active = true;
     queueMicrotask(() => {
@@ -30,15 +34,32 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         const raw = localStorage.getItem("meridian-demo-v1");
         if (raw) {
           const parsed: unknown = JSON.parse(raw);
-          if (isDemoState(parsed)) setState(normalizeJourneyState(parsed));
-          else
+          if (isDemoState(parsed)) {
+            // Keep an untouched recovery copy before introducing normalized links.
+            if (
+              !parsed.visaSchemaVersion &&
+              !localStorage.getItem("meridian-before-visa-v1")
+            ) {
+              try {
+                localStorage.setItem("meridian-before-visa-v1", raw);
+              } catch {
+                setMessage(
+                  "Saved workspace restored. Storage is full; a migration backup could not be saved.",
+                );
+              }
+            }
+            setState(normalizeVisaState(normalizeJourneyState(parsed)));
+          } else {
+            setStorageCompatible(false);
             setMessage(
-              "Saved workspace was incompatible. A fresh preview is ready.",
+              "Saved workspace could not be read. Its storage is preserved; this preview will not overwrite it.",
             );
+          }
         }
       } catch {
+        setStorageCompatible(false);
         setMessage(
-          "Browser storage is unavailable. Changes will last for this session.",
+          "Saved workspace could not be read. Existing storage is preserved; changes will last for this session.",
         );
       }
       setReady(true);
@@ -48,14 +69,14 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     };
   }, []);
   useEffect(() => {
-    if (ready) {
+    if (ready && storageCompatible) {
       try {
         localStorage.setItem("meridian-demo-v1", JSON.stringify(state));
       } catch {
         /* Session state remains usable without storage. */
       }
     }
-  }, [state, ready]);
+  }, [state, ready, storageCompatible]);
   useEffect(() => {
     document.documentElement.dataset.theme = state.theme;
   }, [state.theme]);
@@ -66,7 +87,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     }
   }, [message]);
   const update = (fn: (s: DemoState) => DemoState) =>
-    setState((current) => normalizeJourneyState(fn(current)));
+    setState((current) =>
+      normalizeVisaState(normalizeJourneyState(fn(current))),
+    );
   const selectJourney = (id: string) =>
     setState((s) => {
       const journey = s.journeys.find((j) => j.id === id && !j.archived);
