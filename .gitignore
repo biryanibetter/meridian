@@ -1,0 +1,54 @@
+# Dependencies and generated output
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+.cache/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local credentials and deployment metadata
+.env
+.env.*
+!.env.example
+.vercel/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Test output, recordings, logs and scratch artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+coverage/
+.playwright-mcp/
+artifacts/
+*.log
+*.trace
+
+# Retain offline distribution archives locally, not in source control
+MERIDIAN_USB_SUBMISSION*/
+package-lock.json
+
+# Local agent instructions, caches and old planning documents
+AGENTS.md
+AGENT.md
+agent.md
+.agents/
+.claude/
+.opencode/
+.mcp.json
+.mcp/
+docs/
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+
+.vercel

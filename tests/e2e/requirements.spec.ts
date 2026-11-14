@@ -1,0 +1,90 @@
+import { test, expect } from "@playwright/test";
+
+test.beforeEach(async ({ context }) => {
+  await context.route("**/*", route => ["127.0.0.1", "localhost"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
+});
+
+test("source-backed requirement opens matching document inventory and links prepared metadata", async ({ page }) => {
+  await page.goto("/app/entry");
+  await page.getByRole("button", { name: /Review financial evidence for an Indian passport/ }).click();
+  await expect(page.getByRole("dialog")).toContainText("GOV.UK");
+  await expect(page.getByRole("dialog")).toContainText("Applicability verified: no");
+  await expect(page.getByRole("dialog").getByRole("link", { name: "Open official source" })).toHaveAttribute("href", "https://www.gov.uk/student-visa/money");
+  await page.getByRole("link", { name: "Related documents" }).click();
+  await page.getByRole("button", { name: "Add evidence record", exact: true }).first().click();
+  await page.getByLabel("Evidence description").fill("Financial evidence preparation");
+  await expect(page.getByLabel("Linked requirement (optional)")).toHaveValue("uk-study-india-finances");
+  await page.getByRole("combobox", { name: "Category", exact: true }).selectOption("Financial evidence");
+  await page.getByLabel("Expiry date (if known)").fill("2028-01-01");
+  await page.getByRole("button", { name: "Add record", exact: true }).click();
+  const record = page.locator(".document-card").filter({ hasText: "Financial evidence preparation" });
+  await expect(record).toBeVisible();
+  await record.getByLabel("Prepared", { exact: true }).check();
+  await record.getByLabel("Reviewed", { exact: true }).check();
+  await page.reload();
+  await expect(record.getByLabel("Prepared", { exact: true })).toBeChecked();
+  const document = await page.evaluate(() => JSON.parse(localStorage.getItem("meridian-demo-v1")!).documents.at(-1));
+  expect(document.requirementId).toBe("uk-study-india-finances");
+  expect(document.ownerId).toBe("maya");
+  expect(document.journeyId).toBe("london");
+  expect(document.prepared).toBe(true);
+  await record.getByRole("link", { name: "Continue matching application" }).click();
+  await expect(page.locator(".app-content h1")).toHaveText("Applications");
+  await page.goto("/app/documents");
+  await page.locator(".document-card").filter({ hasText: "Financial evidence preparation" }).getByRole("button", { name: "Remove record" }).click();
+  await expect(page.getByRole("heading", { name: "Financial evidence preparation", exact: true })).toHaveCount(0);
+});
+
+test("application prerequisites gate actions and changed nationality resets progress and conditional records", async ({ page }) => {
+  await page.goto("/app/applications");
+  const steps = page.locator(".application-steps .review-row");
+  await expect(steps.nth(1).getByRole("button")).toBeDisabled();
+  await steps.nth(0).getByRole("button").click();
+  await steps.nth(1).getByRole("button").click();
+  await steps.nth(2).getByRole("button").click();
+  await expect(steps.nth(3).getByRole("link").first()).toHaveAttribute("href", /^https:\/\/www\.gov\.uk\//);
+  const popupOpened = page.waitForEvent("popup");
+  await steps.nth(3).getByRole("link").first().click();
+  const popup = await popupOpened;
+  await popup.close();
+  await expect(steps.nth(3).getByRole("button")).toBeEnabled();
+  await steps.nth(0).getByRole("button").click();
+  await expect(steps.nth(1).getByRole("button")).toBeDisabled();
+  await steps.nth(0).getByRole("button").click();
+  await steps.nth(1).getByRole("button").click();
+  await steps.nth(2).getByRole("button").click();
+  await expect(steps.nth(3).getByRole("button")).toBeDisabled();
+  await page.goto("/app/journey");
+  await page.getByRole("button", { name: "Edit journey", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Edit traveler information" }).click();
+  await page.getByLabel("Passport nationality").fill("Canada");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await page.goto("/app/entry");
+  await expect(page.locator(".requirements-list")).toContainText("Canada’s differential-evidence");
+  await expect(page.locator(".requirements-list")).not.toContainText("for an Indian passport");
+  await page.goto("/app/applications");
+  await expect(page.locator(".application-steps .review-row").nth(0).getByRole("button")).toHaveText("Mark complete");
+  await expect(page.locator(".application-steps .review-row").nth(1).getByRole("button")).toBeDisabled();
+});
+
+test("an unsupported destination keeps its confirmation state even with Qatar transit", async ({ page }) => {
+  await page.goto("/app");
+  await page.getByRole("button", { name: "New journey", exact: true }).click();
+  await page.getByRole("button", { name: /Trip Plan a trip journey/ }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByLabel("Destination city").fill("Lisbon");
+  await page.getByLabel("Destination country").fill("Portugal");
+  await page.getByRole("button", { name: "Add transit stop" }).click();
+  await page.getByLabel("Transit country or city 1").fill("Doha");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Generate travel plan", exact: true }).click();
+  await page.goto("/app/entry");
+  await expect(page.locator(".requirements-list")).toContainText("No jurisdiction-specific guidance is registered");
+  await expect(page.locator(".requirements-list")).toContainText("Qatar transfer");
+  await expect(page.locator(".entry-context")).toContainText("Official confirmation required");
+  await expect(page.locator(".requirements-list")).not.toContainText("GOV.UK");
+});
